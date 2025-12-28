@@ -1,0 +1,36 @@
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from .db import database
+from .models import models
+from .api.v1.endpoints import problems, student, admin, execution, auth
+
+# Create tables
+models.Base.metadata.create_all(bind=database.engine)
+
+app = FastAPI(title="CodeVault Assessment Platform")
+
+# CORS
+origins = [
+    "http://localhost:3000",
+    "http://localhost:3001",
+    "http://127.0.0.1:3000",
+    "http://127.0.0.1:3001",
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+app.include_router(auth.router, prefix="/api/v1/auth", tags=["auth"])
+app.include_router(problems.router, prefix="/api/v1/problems", tags=["problems"])
+app.include_router(execution.router, prefix="/api/v1/execute", tags=["execution"])
+app.include_router(student.router, prefix="/api/v1/student", tags=["student"])
+app.include_router(admin.router, prefix="/api/v1/admin", tags=["admin"])
+
+@app.get("/")
+def read_root():
+    return {"status": "ok", "message": "CodeVault API is running"}

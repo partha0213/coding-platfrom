@@ -66,7 +66,7 @@ export default function AdminTestResults({ params }) {
 
     if (loading) {
         return (
-            <div className="min-h-screen bg-white flex items-center justify-center">
+            <div className="min-h-screen w-full bg-white flex items-center justify-center">
                 <div className="flex flex-col items-center gap-4">
                     <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
                     <p className="text-slate-500 font-bold animate-pulse uppercase tracking-widest text-xs">Fetching Test Intel...</p>
@@ -77,7 +77,7 @@ export default function AdminTestResults({ params }) {
 
     if (!testData || testData.error) {
         return (
-            <div className="min-h-screen bg-white p-10 flex flex-col items-center justify-center">
+            <div className="min-h-screen w-full bg-white p-10 flex flex-col items-center justify-center">
                 <div className="w-20 h-20 bg-red-50 rounded-full flex items-center justify-center mb-6 text-red-500">
                     <ShieldAlert size={40} />
                 </div>

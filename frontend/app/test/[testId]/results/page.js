@@ -59,12 +59,11 @@ export default function TestResults() {
 
     if (loading) {
         return (
-            <div className="w-full h-full bg-white flex items-center justify-center">
+            <div className="w-full min-h-screen bg-white flex items-center justify-center">
                 <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
             </div>
         );
     }
-
     return (
         <div className="w-full min-h-full bg-white text-slate-900 flex">
             <div className="w-full max-w-7xl px-8 py-6 mx-auto min-w-[1024px]">

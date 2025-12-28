@@ -17,51 +17,66 @@ depends_on = None
 
 
 def upgrade():
-    # Add is_test_problem column to problems table
-    op.add_column('problems', 
-        sa.Column('is_test_problem', sa.Boolean(), server_default='false', nullable=False)
-    )
+    # Get current connection
+    conn = op.get_bind()
+    
+    # Check if is_test_problem exists
+    op.execute(sa.text('ALTER TABLE problems ADD COLUMN IF NOT EXISTS is_test_problem BOOLEAN DEFAULT false NOT NULL'))
     
     # Add test_id column to behavior_logs table (foreign key to scheduled_tests)
-    op.add_column('behavior_logs',
-        sa.Column('test_id', sa.Integer(), nullable=True)
-    )
-    op.create_foreign_key(
-        'fk_behavior_logs_test_id',
-        'behavior_logs', 'scheduled_tests',
-        ['test_id'], ['id']
-    )
+    op.execute(sa.text('ALTER TABLE behavior_logs ADD COLUMN IF NOT EXISTS test_id INTEGER'))
+    
+    # Try to add the foreign key constraint
+    try:
+        op.create_foreign_key(
+            'fk_behavior_logs_test_id',
+            'behavior_logs', 'scheduled_tests',
+            ['test_id'], ['id']
+        )
+    except Exception:
+        pass # Probably already exists
     
     # Add severity column to behavior_logs table
-    op.add_column('behavior_logs',
-        sa.Column('severity', sa.String(), server_default='LOW', nullable=False)
-    )
+    op.execute(sa.text("ALTER TABLE behavior_logs ADD COLUMN IF NOT EXISTS severity VARCHAR DEFAULT 'LOW' NOT NULL"))
+    
+    # Add problem_ids column to scheduled_tests table (from the python migration)
+    op.execute(sa.text("ALTER TABLE scheduled_tests ADD COLUMN IF NOT EXISTS problem_ids JSON DEFAULT '[]'::json"))
+
+    # Submission table updates
+    op.execute(sa.text("ALTER TABLE submissions ADD COLUMN IF NOT EXISTS test_id INTEGER REFERENCES scheduled_tests(id)"))
+    op.execute(sa.text("ALTER TABLE submissions ADD COLUMN IF NOT EXISTS error_message TEXT"))
+    op.execute(sa.text("ALTER TABLE submissions ADD COLUMN IF NOT EXISTS is_test_submission BOOLEAN DEFAULT false"))
+
+    # Problem table updates
+    op.execute(sa.text("ALTER TABLE problems ADD COLUMN IF NOT EXISTS starter_codes JSON DEFAULT '{}'::json"))
+    op.execute(sa.text("ALTER TABLE problems ADD COLUMN IF NOT EXISTS creator_id INTEGER REFERENCES users(id)"))
     
     # Create test_problems junction table for many-to-many relationship
-    op.create_table(
-        'test_problems',
-        sa.Column('id', sa.Integer(), nullable=False),
-        sa.Column('test_id', sa.Integer(), nullable=False),
-        sa.Column('problem_id', sa.Integer(), nullable=False),
-        sa.Column('order', sa.Integer(), server_default='0', nullable=False),
-        sa.ForeignKeyConstraint(['test_id'], ['scheduled_tests.id'], ),
-        sa.ForeignKeyConstraint(['problem_id'], ['problems.id'], ),
-        sa.PrimaryKeyConstraint('id')
-    )
-    op.create_index('ix_test_problems_test_id', 'test_problems', ['test_id'])
-    op.create_index('ix_test_problems_problem_id', 'test_problems', ['problem_id'])
+    # Standard op.create_table doesn't have IF NOT EXISTS, so use raw SQL or check
+    op.execute(sa.text("""
+        CREATE TABLE IF NOT EXISTS test_problems (
+            id SERIAL PRIMARY KEY,
+            test_id INTEGER NOT NULL REFERENCES scheduled_tests(id),
+            problem_id INTEGER NOT NULL REFERENCES problems(id),
+            "order" INTEGER DEFAULT 0 NOT NULL
+        )
+    """))
+    
+    # Create indices if they don't exist
+    op.execute(sa.text('CREATE INDEX IF NOT EXISTS ix_test_problems_test_id ON test_problems (test_id)'))
+    op.execute(sa.text('CREATE INDEX IF NOT EXISTS ix_test_problems_problem_id ON test_problems (problem_id)'))
 
 
 def downgrade():
-    # Remove test_problems junction table
-    op.drop_index('ix_test_problems_problem_id', table_name='test_problems')
-    op.drop_index('ix_test_problems_test_id', table_name='test_problems')
-    op.drop_table('test_problems')
+    # Remove test_problems logic
+    op.execute(sa.text('DROP TABLE IF EXISTS test_problems CASCADE'))
     
     # Remove behavior log columns
-    op.drop_column('behavior_logs', 'severity')
-    op.drop_constraint('fk_behavior_logs_test_id', 'behavior_logs', type_='foreignkey')
-    op.drop_column('behavior_logs', 'test_id')
+    op.execute(sa.text('ALTER TABLE behavior_logs DROP COLUMN IF EXISTS severity'))
+    op.execute(sa.text('ALTER TABLE behavior_logs DROP COLUMN IF EXISTS test_id'))
     
-    # Remove is_test_problem column
-    op.drop_column('problems', 'is_test_problem')
+    # Remove scheduled_tests column
+    op.execute(sa.text('ALTER TABLE scheduled_tests DROP COLUMN IF EXISTS problem_ids'))
+    
+    # Remove problems column
+    op.execute(sa.text('ALTER TABLE problems DROP COLUMN IF EXISTS is_test_problem'))

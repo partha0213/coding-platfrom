@@ -20,6 +20,7 @@ config = context.config
 
 # Overwrite the alembic.ini sqlalchemy.url with our app's URL
 config.set_main_option("sqlalchemy.url", SQLALCHEMY_DATABASE_URL)
+print(f"DEBUG: Alembic using database at: {SQLALCHEMY_DATABASE_URL.split('@')[-1].split('/')[0] if '@' in SQLALCHEMY_DATABASE_URL else 'local'}")
 
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.

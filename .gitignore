@@ -48,15 +48,20 @@ alembic/versions/__pycache__/
 
 # Node.js / Frontend
 node_modules/
-/.pnp
+.pnp
 .pnp.js
-/coverage
-/.next/
-/out/
+coverage/
+.next/
+out/
+build/
+dist/
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
 
 # Production
-/build
-/dist
+# (covered by patterns above)
 
 # Misc
 .DS_Store

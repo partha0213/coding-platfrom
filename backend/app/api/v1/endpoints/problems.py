@@ -10,7 +10,7 @@ from app.api.deps import get_current_admin
 
 router = APIRouter()
 
-@router.get("/", response_model=List[schemas.ProblemResponse])
+@router.get("", response_model=List[schemas.ProblemResponse])
 def get_problems(db: Session = Depends(database.get_db)):
     # Only return non-test problems for regular problem list
     problems = db.query(models.Problem).filter(models.Problem.is_test_problem == False).all()
@@ -20,7 +20,7 @@ def get_problems(db: Session = Depends(database.get_db)):
             p.starter_codes = json.loads(p.starter_codes)
     return problems
 
-@router.post("/", response_model=schemas.ProblemResponse)
+@router.post("", response_model=schemas.ProblemResponse)
 def create_problem(
     problem: schemas.ProblemCreate, 
     db: Session = Depends(database.get_db),

@@ -10,7 +10,7 @@ import json
 router = APIRouter()
 executor = CodeExecutor()
 
-@router.post("/", response_model=schemas.ExecutionResult)
+@router.post("", response_model=schemas.ExecutionResult)
 def execute_code(
     request: schemas.ExecuteRequest, 
     background_tasks: BackgroundTasks,

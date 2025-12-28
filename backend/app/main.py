@@ -7,7 +7,7 @@ from .api.v1.endpoints import problems, student, admin, execution, auth
 # Create tables
 models.Base.metadata.create_all(bind=database.engine)
 
-app = FastAPI(title="CodeVault Assessment Platform")
+app = FastAPI(title="CodeVault Assessment Platform", redirect_slashes=False)
 
 # CORS
 origins = [
@@ -16,6 +16,7 @@ origins = [
     "http://127.0.0.1:3000",
     "http://127.0.0.1:3001",
     "https://coding-platfrom-seven.vercel.app",
+    "https://coding-platfrom-production.up.railway.app",
 ]
 
 app.add_middleware(

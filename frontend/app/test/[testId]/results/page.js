@@ -9,6 +9,8 @@ import {
 import { useAuth } from '@/context/AuthContext';
 import MonacoEditor from '@monaco-editor/react';
 
+import AdvancedLoading from '@/components/AdvancedLoading';
+
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
 
 export default function TestResults() {
@@ -59,8 +61,15 @@ export default function TestResults() {
 
     if (loading) {
         return (
-            <div className="w-full min-h-screen bg-white flex items-center justify-center">
-                <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+            <div className="w-full min-h-screen bg-slate-50 flex items-center justify-center p-10">
+                <AdvancedLoading
+                    title="Mission Debriefing"
+                    items={[
+                        "Gathering mission intelligence...",
+                        "Calculating performance delta...",
+                        "Compiling personnel metrics..."
+                    ]}
+                />
             </div>
         );
     }

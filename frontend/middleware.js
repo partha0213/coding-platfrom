@@ -22,11 +22,12 @@ export async function middleware(request) {
     // 2. Define Rules
     const isAuthPage = pathname.startsWith('/login') || pathname.startsWith('/signup');
     const isAdminPage = pathname.startsWith('/admin');
-    const isDashboard = pathname === '/' || pathname === '/dashboard' || pathname.startsWith('/problem');
+    const isLearningPage = pathname.startsWith('/learning');
+    const isDashboard = pathname === '/' || pathname === '/dashboard';
 
     // Case A: User is NOT logged in
     if (!payload) {
-        if (isAdminPage || isDashboard) {
+        if (isAdminPage || isLearningPage || isDashboard) {
             return NextResponse.redirect(new URL('/login', request.url));
         }
     }
@@ -36,12 +37,12 @@ export async function middleware(request) {
         if (isAuthPage) {
             // Redirect to role-based home
             if (payload.role?.toUpperCase() === 'ADMIN') return NextResponse.redirect(new URL('/admin', request.url));
-            return NextResponse.redirect(new URL('/dashboard', request.url));
+            return NextResponse.redirect(new URL('/learning', request.url));
         }
 
         if (isAdminPage && payload.role?.toUpperCase() !== 'ADMIN') {
             // Student trying to access admin
-            return NextResponse.redirect(new URL('/dashboard', request.url));
+            return NextResponse.redirect(new URL('/learning', request.url));
         }
     }
 

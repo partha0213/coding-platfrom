@@ -261,8 +261,48 @@ export default function TakeTest() {
 
     if (!test || problems.length === 0) {
         return (
-            <div className="h-screen w-screen bg-white flex items-center justify-center overflow-hidden">
-                <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+            <div className="h-screen w-screen bg-slate-950 flex items-center justify-center p-6 overflow-hidden relative">
+                {/* Background atmosphere */}
+                <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] bg-blue-600/10 blur-[120px] rounded-full"></div>
+                <div className="absolute bottom-[-20%] right-[-10%] w-[50%] h-[50%] bg-indigo-600/10 blur-[120px] rounded-full"></div>
+
+                <div className="max-w-md w-full relative z-10">
+                    <div className="text-center mb-12 animate-in fade-in slide-in-from-bottom-4 duration-1000">
+                        <div className="w-20 h-20 bg-blue-600/20 rounded-3xl flex items-center justify-center mx-auto mb-6 border border-blue-500/30 shadow-2xl shadow-blue-500/20">
+                            <div className="w-10 h-10 border-4 border-blue-400 border-t-transparent rounded-full animate-spin"></div>
+                        </div>
+                        <h2 className="text-3xl font-black text-white mb-3 tracking-tight">Initializing Session</h2>
+                        <div className="flex items-center justify-center gap-2 text-blue-400 font-bold uppercase tracking-widest text-[10px]">
+                            <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse"></span>
+                            Establishing Secure Link
+                        </div>
+                    </div>
+
+                    <div className="space-y-4">
+                        {[
+                            { label: "Proctoring Algorithms", desc: "Activating AI object detection & behavior monitoring" },
+                            { label: "Environment Sync", desc: "Verifying browser integrity and fullscreen protocols" },
+                            { label: "Test Vault", desc: "Decrypting assessment challenges and starter code" }
+                        ].map((item, idx) => (
+                            <div key={idx}
+                                className="glass-morphism-dark p-5 rounded-2xl border border-white/5 animate-in fade-in slide-in-from-bottom-4 duration-700"
+                                style={{ animationDelay: `${(idx + 1) * 200}ms` }}
+                            >
+                                <div className="flex justify-between items-center mb-1">
+                                    <span className="text-xs font-black text-slate-200 uppercase tracking-widest">{item.label}</span>
+                                    <span className="text-[9px] font-bold text-blue-400 uppercase">Active</span>
+                                </div>
+                                <p className="text-[11px] text-slate-500 font-medium leading-relaxed">
+                                    {item.desc}
+                                </p>
+                            </div>
+                        ))}
+                    </div>
+
+                    <p className="text-center mt-12 text-slate-600 text-[10px] font-bold uppercase tracking-[0.3em] animate-pulse">
+                        CodeVault Terminal v4.0.2
+                    </p>
+                </div>
             </div>
         );
     }

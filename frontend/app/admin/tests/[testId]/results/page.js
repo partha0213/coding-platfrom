@@ -13,6 +13,7 @@ import {
     AlertTriangle
 } from 'lucide-react';
 import Link from 'next/link';
+import AdvancedLoading from '@/components/AdvancedLoading';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
 
@@ -66,11 +67,15 @@ export default function AdminTestResults({ params }) {
 
     if (loading) {
         return (
-            <div className="min-h-screen w-full bg-white flex items-center justify-center">
-                <div className="flex flex-col items-center gap-4">
-                    <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-                    <p className="text-slate-500 font-bold animate-pulse uppercase tracking-widest text-xs">Fetching Test Intel...</p>
-                </div>
+            <div className="min-h-screen w-full bg-slate-50 flex items-center justify-center p-10">
+                <AdvancedLoading
+                    title="Mission Debriefing"
+                    items={[
+                        "Gathering mission intelligence...",
+                        "Calculating performance delta...",
+                        "Compiling personnel metrics..."
+                    ]}
+                />
             </div>
         );
     }

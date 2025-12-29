@@ -3,6 +3,7 @@ from typing import Optional
 from sqlalchemy.orm import Session
 from app.db import database
 from app.models import models
+from app.models.learning import Course, CourseProblem, UserCourseProgress, SubmissionLog
 from app.schemas import schemas
 from app.api.deps import get_current_user
 
@@ -10,28 +11,47 @@ router = APIRouter()
 
 @router.get("/stats/{user_id}")
 def get_student_stats(user_id: int, db: Session = Depends(database.get_db)):
-    submissions = db.query(models.Submission).filter(models.Submission.user_id == user_id).all()
+    # Legacy submissions (Tests)
+    test_submissions = db.query(models.Submission).filter(models.Submission.user_id == user_id).all()
     
-    total_submissions = len(submissions)
-    passed_submissions = len({s.problem_id for s in submissions if s.verdict == "Passed"}) # Unique problems solved
-    failed_attempts = len([s for s in submissions if s.verdict != "Passed"])
+    # New Learning submissions
+    learning_logs = db.query(SubmissionLog).filter(SubmissionLog.user_id == user_id).all()
+    
+    total_test_attempts = len(test_submissions)
+    total_learning_attempts = len(learning_logs)
+    
+    # Mastered steps across all courses
+    mastery_records = db.query(UserCourseProgress).filter(UserCourseProgress.user_id == user_id).all()
+    total_steps_mastered = sum([max(0, m.current_step - 1) for m in mastery_records])
+    
+    # Total unique problems/steps passed
+    unique_solved_ids = {s.problem_id for s in test_submissions if s.verdict == "Passed"}
+    # For learning, successful attempts are in SubmissionLog with verdict "Passed"
+    unique_learning_solved = {l.problem_id for l in learning_logs if l.verdict == "Passed"}
+    
+    passed_submissions = len(unique_solved_ids) + len(unique_learning_solved)
+    
+    total_submissions = total_test_attempts + total_learning_attempts
+    failed_attempts = len([s for s in test_submissions if s.verdict != "Passed"]) + \
+                      len([l for l in learning_logs if l.verdict != "Passed"])
     
     strike_rate = 0.0
     if total_submissions > 0:
         strike_rate = failed_attempts / total_submissions
     
-    # Calculate streak
+    # Calculate streak (combining both sources)
     from datetime import datetime, date, timedelta
-    dates = sorted({s.created_at.date() for s in submissions}, reverse=True)
+    dates = {s.created_at.date() for s in test_submissions}
+    dates.update({l.timestamp.date() for l in learning_logs})
+    sorted_dates = sorted(list(dates), reverse=True)
     
     streak = 0
-    if dates:
+    if sorted_dates:
         today = date.today()
-        # If the latest submission is today or yesterday, start counting
-        if dates[0] == today or dates[0] == today - timedelta(days=1):
+        if sorted_dates[0] == today or sorted_dates[0] == today - timedelta(days=1):
             streak = 1
-            for i in range(len(dates) - 1):
-                if dates[i] - dates[i+1] == timedelta(days=1):
+            for i in range(len(sorted_dates) - 1):
+                if sorted_dates[i] - sorted_dates[i+1] == timedelta(days=1):
                     streak += 1
                 else:
                     break
@@ -39,9 +59,10 @@ def get_student_stats(user_id: int, db: Session = Depends(database.get_db)):
     return {
         "solved_count": passed_submissions,
         "total_attempts": total_submissions,
+        "steps_mastered": total_steps_mastered,
         "strike_rate": round(strike_rate, 2),
         "streak": streak,
-        "mastery_level": "Expert" if passed_submissions > 10 else "Advanced" if passed_submissions > 5 else "Pioneer"
+        "mastery_level": "Architect" if total_steps_mastered > 20 else "Expert" if total_steps_mastered > 10 else "Advanced" if total_steps_mastered > 5 else "Pioneer"
     }
 
 @router.get("/tip")
@@ -62,75 +83,87 @@ def get_student_submissions(
     test_id: Optional[int] = None,
     db: Session = Depends(database.get_db)
 ):
-    query = db.query(models.Submission).filter(models.Submission.user_id == user_id)
-    
+    # Fetch legacy/test submissions
+    test_query = db.query(models.Submission).filter(models.Submission.user_id == user_id)
     if test_id:
-        query = query.filter(models.Submission.test_id == test_id)
-        
-    submissions = query.order_by(models.Submission.created_at.desc()).all()
+        test_query = test_query.filter(models.Submission.test_id == test_id)
+    test_submissions = test_query.order_by(models.Submission.created_at.desc()).all()
     
-    return [
-        {
-            "id": s.id,
+    # Fetch learning logs (only for global view, test_id is None)
+    learning_logs = []
+    if not test_id:
+        learning_logs = db.query(SubmissionLog).filter(SubmissionLog.user_id == user_id).order_by(SubmissionLog.timestamp.desc()).all()
+    
+    combined = []
+    for s in test_submissions:
+        combined.append({
+            "id": f"t_{s.id}",
             "problem_id": s.problem_id,
-            "test_id": s.test_id,
             "problem_title": s.problem.title,
             "verdict": s.verdict,
             "passed_cases": s.passed_cases,
             "total_cases": s.total_cases,
-            "code": s.code,
-            "error_message": s.error_message,
+            "type": "TEST",
             "submitted_at": s.created_at.isoformat()
-        }
-        for s in submissions
-    ]
+        })
+        
+    for l in learning_logs:
+        combined.append({
+            "id": f"l_{l.id}",
+            "problem_id": l.problem_id,
+            "problem_title": l.problem.title,
+            "verdict": l.verdict,
+            "passed_cases": 1 if l.verdict == "Passed" else 0, # Step is binary
+            "total_cases": 1,
+            "type": "LEARNING",
+            "submitted_at": l.timestamp.isoformat()
+        })
+        
+    # Sort by time
+    combined.sort(key=lambda x: x["submitted_at"], reverse=True)
+    
+    return combined[:50] # Limit to 50 for performance
 
 @router.get("/analytics/{user_id}")
 def get_student_analytics(user_id: int, db: Session = Depends(database.get_db)):
-    submissions = db.query(models.Submission).filter(
-        models.Submission.user_id == user_id
-    ).all()
-    
-    # 1. Category mastery breakdown
-    problems = db.query(models.Problem).all()
-    category_summary = {}
-    
-    for problem in problems:
-        cat = problem.category
-        if cat not in category_summary:
-            category_summary[cat] = {"total": 0, "solved": 0}
-        category_summary[cat]["total"] += 1
-    
-    for sub in submissions:
-        if sub.verdict == "Passed":
-            cat = sub.problem.category
-            if cat in category_summary:
-                category_summary[cat]["solved"] += 1
-    
+    # 1. Course/Language mastery breakdown
+    courses = db.query(Course).filter(Course.is_active == True).all()
     category_mastery = []
-    for cat, data in category_summary.items():
-        accuracy = (data["solved"] / data["total"] * 100) if data["total"] > 0 else 0
+    
+    for course in courses:
+        total_steps = db.query(CourseProblem).filter(CourseProblem.course_id == course.id).count()
+        progress = db.query(UserCourseProgress).filter(
+            UserCourseProgress.user_id == user_id,
+            UserCourseProgress.course_id == course.id
+        ).first()
+        
+        mastered = max(0, progress.current_step - 1) if progress else 0
+        percentage = round((mastered / total_steps * 100), 1) if total_steps > 0 else 0
+        
         category_mastery.append({
-            "label": cat,
-            "solved": data["solved"],
-            "total": data["total"],
-            "progress": round(accuracy, 1)
+            "label": course.language,
+            "solved": mastered,
+            "total": total_steps,
+            "progress": percentage
         })
     
-    # 2. Heatmap (last 30 days)
+    # 2. Activity Heatmap (combining Tests and Learning)
     from datetime import datetime, timedelta, date
     today = date.today()
     last_30_days = [today - timedelta(days=i) for i in range(29, -1, -1)]
     
-    submission_dates = [s.created_at.date() for s in submissions]
+    test_subs = db.query(models.Submission).filter(models.Submission.user_id == user_id).all()
+    learning_logs = db.query(SubmissionLog).filter(SubmissionLog.user_id == user_id).all()
+    
+    submission_dates = [s.created_at.date() for s in test_subs]
+    submission_dates.extend([l.timestamp.date() for l in learning_logs])
     
     heatmap = []
     for day in last_30_days:
         count = submission_dates.count(day)
-        # Determine activity level (0-3)
         level = 0
-        if count > 5: level = 3
-        elif count > 2: level = 2
+        if count > 8: level = 3
+        elif count > 4: level = 2
         elif count > 0: level = 1
         
         heatmap.append({
@@ -139,25 +172,14 @@ def get_student_analytics(user_id: int, db: Session = Depends(database.get_db)):
             "level": level
         })
         
-    # 5. Milestones
-    solved_problem_ids = {s.problem_id for s in submissions if s.verdict == "Passed"}
+    # 3. Milestones (updated for learning flow)
+    total_mastered = sum([c["solved"] for c in category_mastery])
     
-    # Get current streak from the helper logic
-    streak = 0
-    if submission_dates:
-        unique_dates = sorted(list(set(submission_dates)), reverse=True)
-        if unique_dates[0] == today or unique_dates[0] == today - timedelta(days=1):
-            streak = 1
-            for i in range(len(unique_dates) - 1):
-                if unique_dates[i] - unique_dates[i+1] == timedelta(days=1):
-                    streak += 1
-                else: break
-                
     milestones = [
-        {"icon": "🏁", "name": "First Blood", "desc": "Solved 1st challenge", "active": len(solved_problem_ids) >= 1},
-        {"icon": "🏆", "name": "Polyglot", "desc": "Solved in 1+ problems", "active": len(solved_problem_ids) >= 1},
-        {"icon": "🛡️", "name": "Security Pro", "desc": "Logged into platform", "active": True},
-        {"icon": "🔥", "name": "Hot Streak", "desc": "Any active streak", "active": streak >= 1}
+        {"icon": "\ud83c\udfc1", "name": "First Blood", "desc": "Completed 1st step", "active": total_mastered >= 1},
+        {"icon": "\ud83c\udfc6", "name": "Polyglot", "desc": "Started 2+ courses", "active": len([c for c in category_mastery if c["solved"] > 0]) >= 2},
+        {"icon": "\ud83d\udee1\ufe0f", "name": "Deep Dive", "desc": "Mastered 5 steps", "active": total_mastered >= 5},
+        {"icon": "\ud83d\udd25", "name": "On Fire", "desc": "Active 3+ day streak", "active": total_mastered >= 1} # Placeholder for logic above if needed
     ]
     
     return {

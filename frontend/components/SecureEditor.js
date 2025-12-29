@@ -3,7 +3,7 @@ import Editor, { useMonaco } from "@monaco-editor/react";
 import { useEffect, useRef, useState } from "react";
 import { CopyX, AlertTriangle } from "lucide-react";
 
-export default function SecureEditor({ code, setCode, language = "javascript" }) {
+export default function SecureEditor({ code, setCode, readOnly = false, language = "javascript" }) {
     const monaco = useMonaco();
     const editorRef = useRef(null);
     const [warnings, setWarnings] = useState([]);
@@ -81,6 +81,7 @@ export default function SecureEditor({ code, setCode, language = "javascript" })
                 }}
                 onMount={handleEditorDidMount}
                 options={{
+                    readOnly: readOnly,
                     minimap: { enabled: false },
                     fontSize: 14,
                     scrollBeyondLastLine: false,

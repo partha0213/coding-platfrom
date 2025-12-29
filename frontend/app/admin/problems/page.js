@@ -4,183 +4,272 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
     Code,
-    Edit,
+    Edit3,
     Trash2,
     Plus,
     ArrowLeft,
     AlertCircle,
-    CheckCircle2
+    CheckCircle2,
+    Layout,
+    ArrowRight,
+    Search,
+    Shield,
+    Terminal,
+    BookOpen,
+    Users,
+    Layers,
+    Activity,
+    Settings,
+    ChevronRight,
+    X,
+    Save
 } from 'lucide-react';
+import AdvancedLoading from '@/components/AdvancedLoading';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
 
-export default function ProblemManagement() {
+export default function CourseManagement() {
     const router = useRouter();
-    const [problems, setProblems] = useState([]);
+    const [courses, setCourses] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [deleteId, setDeleteId] = useState(null);
+    const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+    const [newCourse, setNewCourse] = useState({ language: '', editor_language: 'python' });
+    const [isCreating, setIsCreating] = useState(false);
 
     useEffect(() => {
-        fetchProblems();
+        fetchCourses();
     }, []);
 
-    const fetchProblems = async () => {
+    const fetchCourses = async () => {
+        const token = localStorage.getItem("token");
         try {
-            const res = await fetch(`${API_URL}/problems`);
+            const res = await fetch(`${API_URL}/admin/learning/courses`, {
+                headers: { "Authorization": `Bearer ${token}` }
+            });
             const data = await res.json();
-            setProblems(data);
+            setCourses(data);
         } catch (err) {
-            console.error("Failed to fetch problems:", err);
+            console.error("Failed to fetch courses:", err);
         } finally {
             setLoading(false);
         }
     };
 
-    const handleDelete = async (id) => {
+    const handleCreateCourse = async (e) => {
+        e.preventDefault();
+        setIsCreating(true);
         const token = localStorage.getItem("token");
         try {
-            const res = await fetch(`${API_URL}/problems/${id}`, {
-                method: "DELETE",
+            const res = await fetch(`${API_URL}/admin/learning/courses`, {
+                method: "POST",
                 headers: {
+                    "Content-Type": "application/json",
                     "Authorization": `Bearer ${token}`
-                }
+                },
+                body: JSON.stringify(newCourse)
             });
-
             if (res.ok) {
-                setProblems(problems.filter(p => p.id !== id));
-                setDeleteId(null);
+                setIsCreateModalOpen(false);
+                setNewCourse({ language: '', editor_language: 'python' });
+                fetchCourses();
             } else {
-                alert("Failed to delete problem");
+                const err = await res.json();
+                alert(err.detail || "Failed to create course");
             }
         } catch (err) {
             console.error(err);
-            alert("Error deleting problem");
+            alert("Error creating course");
+        } finally {
+            setIsCreating(false);
         }
     };
 
-    const getDifficultyColor = (difficulty) => {
-        switch (difficulty) {
-            case 'Easy': return 'text-emerald-600 bg-emerald-50 border-emerald-200';
-            case 'Medium': return 'text-amber-600 bg-amber-50 border-amber-200';
-            case 'Hard': return 'text-red-600 bg-red-50 border-red-200';
-            default: return 'text-slate-600 bg-slate-50 border-slate-200';
+    const toggleCourseStatus = async (courseId, currentStatus) => {
+        const token = localStorage.getItem("token");
+        const action = currentStatus ? 'deactivate' : 'activate';
+        try {
+            const res = await fetch(`${API_URL}/admin/learning/courses/${courseId}/${action}`, {
+                method: "PATCH",
+                headers: { "Authorization": `Bearer ${token}` }
+            });
+            if (res.ok) {
+                fetchCourses();
+            }
+        } catch (err) {
+            console.error(err);
         }
     };
+
+    if (loading) {
+        return (
+            <div className="min-h-screen bg-slate-50 flex items-center justify-center p-10">
+                <AdvancedLoading
+                    title="Accessing Intelligence Core"
+                    items={[
+                        "Loading learning modules...",
+                        "Synchronizing course registries...",
+                        "Verifying curriculum integrity..."
+                    ]}
+                />
+            </div>
+        );
+    }
 
     return (
-        <div className="min-h-screen bg-slate-50 text-slate-900 p-10">
-            <header className="max-w-7xl mx-auto mb-12 flex justify-between items-center bg-white p-8 rounded-3xl border border-slate-200 shadow-xl shadow-slate-200/50">
-                <div className="flex items-center gap-6">
-                    <Link href="/admin" className="p-3 hover:bg-slate-50 rounded-2xl transition-all text-slate-400 hover:text-blue-600 border border-slate-100">
-                        <ArrowLeft size={24} />
+        <div className="min-h-screen bg-slate-50 p-10">
+            <header className="max-w-7xl mx-auto mb-12 glass-morphism p-10 rounded-[40px] border border-white/60 shadow-premium group relative overflow-hidden flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 rounded-full -mr-16 -mt-16 group-hover:bg-blue-500/10 transition-colors"></div>
+
+                <div className="flex items-center gap-6 relative z-10">
+                    <Link href="/admin" className="w-14 h-14 bg-white rounded-2xl flex items-center justify-center text-slate-400 hover:text-blue-600 hover:shadow-xl transition-all border border-slate-100 group/back">
+                        <ArrowLeft size={24} className="group-hover/back:-translate-x-1 transition-transform" />
                     </Link>
                     <div>
-                        <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Problem Management</h1>
-                        <p className="text-slate-500 font-medium text-sm mt-1">Manage, edit, and organize all challenges</p>
+                        <h1 className="text-3xl font-black text-slate-900 tracking-tighter">Curriculum <span className="italic bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-indigo-600 uppercase">Manager</span></h1>
+                        <div className="flex items-center gap-3">
+                            <p className="text-slate-500 font-bold uppercase tracking-widest text-[10px] opacity-70">Sequential Learning Paths & Intelligence Modules</p>
+                            <div className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse"></div>
+                        </div>
                     </div>
                 </div>
-                <Link href="/admin/create-problem">
-                    <button className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-2xl font-black uppercase tracking-widest text-sm flex items-center gap-3 transition-all shadow-lg shadow-blue-500/20 active:scale-95">
-                        <Plus size={20} /> Create New
+
+                <div className="flex items-center gap-4 relative z-10 w-full md:w-auto">
+                    <button
+                        onClick={() => setIsCreateModalOpen(true)}
+                        className="w-full md:w-auto bg-slate-900 text-white px-8 py-4 rounded-2xl font-black uppercase tracking-[0.2em] text-[10px] flex items-center justify-center gap-3 transition-all shadow-2xl hover:bg-blue-600 active:scale-95 group/btn"
+                    >
+                        <Plus size={18} className="group-hover/btn:rotate-90 transition-transform" /> Deploy New Module
                     </button>
-                </Link>
+                </div>
             </header>
 
             <main className="max-w-7xl mx-auto">
-                {loading ? (
-                    <div className="bg-white p-20 rounded-3xl border border-slate-200 shadow-sm text-center">
-                        <div className="inline-block w-8 h-8 border-4 border-slate-200 border-t-blue-600 rounded-full animate-spin mb-4"></div>
-                        <p className="text-slate-400 font-medium">Loading challenges...</p>
-                    </div>
-                ) : problems.length === 0 ? (
-                    <div className="bg-white p-20 rounded-3xl border border-slate-200 shadow-sm text-center">
-                        <Code className="mx-auto text-slate-300 mb-4" size={48} />
-                        <p className="text-slate-400 font-medium">No problems created yet.</p>
-                        <Link href="/admin/create-problem">
-                            <button className="mt-6 bg-blue-50 hover:bg-blue-100 text-blue-600 px-6 py-3 rounded-xl font-bold transition-all">
-                                Create Your First Problem
-                            </button>
-                        </Link>
+                {courses.length === 0 ? (
+                    <div className="glass-morphism p-32 rounded-[40px] border border-white/60 shadow-premium text-center">
+                        <div className="w-20 h-20 bg-slate-900 text-white rounded-3xl flex items-center justify-center mx-auto mb-8 shadow-2xl">
+                            <BookOpen size={40} />
+                        </div>
+                        <p className="text-2xl font-black text-slate-900 tracking-tighter mb-2">Curriculum Void</p>
+                        <p className="text-slate-500 font-medium text-sm mb-10 max-w-xs mx-auto opacity-70 uppercase tracking-widest text-[9px] font-black">No learning modules have been deployment to the grid.</p>
+                        <button onClick={() => setIsCreateModalOpen(true)} className="bg-white text-slate-900 px-10 py-4 rounded-2xl font-black uppercase tracking-[0.2em] text-[10px] border border-slate-200 shadow-xl hover:bg-slate-900 hover:text-white transition-all active:scale-95">
+                            Deploy Initial Module
+                        </button>
                     </div>
                 ) : (
-                    <div className="bg-white rounded-3xl border border-slate-200 shadow-xl shadow-slate-200/50 overflow-hidden">
-                        <table className="w-full">
-                            <thead className="bg-slate-50 border-b border-slate-200">
-                                <tr className="text-[10px] font-black uppercase tracking-widest text-slate-400">
-                                    <th className="px-8 py-4 text-left">ID</th>
-                                    <th className="px-8 py-4 text-left">Title</th>
-                                    <th className="px-8 py-4 text-left">Category</th>
-                                    <th className="px-8 py-4 text-left">Difficulty</th>
-                                    <th className="px-8 py-4 text-right">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-slate-100">
-                                {problems.map((problem) => (
-                                    <tr key={problem.id} className="hover:bg-slate-50/50 transition-colors">
-                                        <td className="px-8 py-5 text-slate-500 font-bold text-sm">#{problem.id}</td>
-                                        <td className="px-8 py-5">
-                                            <div className="font-bold text-slate-800">{problem.title}</div>
-                                            <div className="text-xs text-slate-400 truncate max-w-md mt-1">{problem.description?.substring(0, 80)}...</div>
-                                        </td>
-                                        <td className="px-8 py-5">
-                                            <span className="text-xs font-bold text-slate-600 bg-slate-100 px-3 py-1 rounded-lg">
-                                                {problem.category}
-                                            </span>
-                                        </td>
-                                        <td className="px-8 py-5">
-                                            <span className={`text-xs font-bold px-3 py-1 rounded-lg border ${getDifficultyColor(problem.difficulty)}`}>
-                                                {problem.difficulty}
-                                            </span>
-                                        </td>
-                                        <td className="px-8 py-5 text-right">
-                                            <div className="flex items-center justify-end gap-2">
-                                                <Link href={`/admin/create-problem?edit=${problem.id}`}>
-                                                    <button className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all">
-                                                        <Edit size={18} />
-                                                    </button>
-                                                </Link>
-                                                <button
-                                                    onClick={() => setDeleteId(problem.id)}
-                                                    className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all"
-                                                >
-                                                    <Trash2 size={18} />
-                                                </button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                        {courses.map((course, idx) => (
+                            <div
+                                key={course.id}
+                                className="group relative bg-white border border-slate-200 rounded-[32px] p-8 hover:border-blue-500/50 hover:shadow-[0_32px_64px_-16px_rgba(0,0,0,0.1)] transition-all duration-500 animate-in fade-in slide-in-from-bottom-8 fill-mode-both"
+                                style={{ animationDelay: `${idx * 100}ms` }}
+                            >
+                                <div className="flex justify-between items-start mb-8">
+                                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center font-black text-sm shadow-lg group-hover:scale-110 group-hover:rotate-3 transition-all duration-500 ${course.editor_language === 'python' ? 'bg-indigo-600 text-white' :
+                                            course.editor_language === 'javascript' ? 'bg-amber-400 text-slate-900' :
+                                                'bg-slate-900 text-white'
+                                        }`}>
+                                        {course.editor_language.substring(0, 2).toUpperCase()}
+                                    </div>
+                                    <div className={`px-3 py-1 rounded-full text-[8px] font-black uppercase tracking-widest border transition-colors ${course.is_active ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-slate-50 text-slate-400 border-slate-100'
+                                        }`}>
+                                        {course.is_active ? 'Active' : 'Offline'}
+                                    </div>
+                                </div>
+
+                                <h3 className="text-2xl font-black text-slate-900 mb-6 group-hover:text-blue-600 transition-colors uppercase tracking-tighter">
+                                    {course.language}
+                                </h3>
+
+                                <div className="grid grid-cols-2 gap-4 mb-8">
+                                    <div className="bg-slate-50 rounded-2xl p-4 border border-slate-100">
+                                        <div className="flex items-center gap-2 text-[8px] font-black uppercase tracking-widest text-slate-400 mb-1">
+                                            <Layers size={10} /> Nodes
+                                        </div>
+                                        <div className="text-xl font-black text-slate-900">{course.problem_count} Steps</div>
+                                    </div>
+                                    <div className="bg-slate-50 rounded-2xl p-4 border border-slate-100">
+                                        <div className="flex items-center gap-2 text-[8px] font-black uppercase tracking-widest text-slate-400 mb-1">
+                                            <Users size={10} /> Units
+                                        </div>
+                                        <div className="text-xl font-black text-slate-900">{course.user_count}</div>
+                                    </div>
+                                </div>
+
+                                <div className="flex gap-3">
+                                    <Link href={`/admin/problems/${course.id}`} className="flex-1">
+                                        <button className="w-full bg-slate-900 text-white py-3 rounded-xl text-[9px] font-black uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-blue-600 transition-all active:scale-95 shadow-lg shadow-slate-900/10">
+                                            <Settings size={12} /> Manage Steps
+                                        </button>
+                                    </Link>
+                                    <button
+                                        onClick={() => toggleCourseStatus(course.id, course.is_active)}
+                                        className={`w-12 h-12 flex items-center justify-center rounded-xl border transition-all active:scale-95 ${course.is_active ? 'bg-white border-slate-200 text-slate-400 hover:text-red-500 hover:border-red-200' : 'bg-emerald-600 border-emerald-500 text-white hover:bg-emerald-700'
+                                            }`}
+                                    >
+                                        <Activity size={18} />
+                                    </button>
+                                </div>
+                            </div>
+                        ))}
                     </div>
                 )}
             </main>
 
-            {/* Delete Confirmation Modal */}
-            {deleteId && (
-                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 animate-in fade-in duration-200">
-                    <div className="bg-white p-8 rounded-3xl border border-slate-200 shadow-2xl max-w-md w-full mx-4 animate-in zoom-in-95 duration-200">
-                        <div className="flex items-center gap-4 mb-6">
-                            <div className="w-12 h-12 bg-red-100 text-red-600 rounded-2xl flex items-center justify-center">
-                                <AlertCircle size={24} />
+            {/* Create Course Modal */}
+            {isCreateModalOpen && (
+                <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[100] flex items-center justify-center p-6 animate-in fade-in duration-300">
+                    <div className="bg-white w-full max-w-md rounded-[40px] shadow-premium border border-white/20 overflow-hidden scale-in-center">
+                        <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-blue-500 to-indigo-600"></div>
+                        <div className="p-10">
+                            <div className="flex justify-between items-center mb-10">
+                                <h3 className="text-2xl font-black text-slate-900 tracking-tighter uppercase italic">Deploy New Module</h3>
+                                <button onClick={() => setIsCreateModalOpen(false)} className="w-10 h-10 rounded-full hover:bg-slate-50 flex items-center justify-center text-slate-400 transition-colors">
+                                    <X size={20} />
+                                </button>
                             </div>
-                            <div>
-                                <h3 className="text-xl font-black text-slate-900">Delete Problem?</h3>
-                                <p className="text-sm text-slate-500 mt-1">This action cannot be undone</p>
-                            </div>
-                        </div>
-                        <div className="flex gap-3">
-                            <button
-                                onClick={() => setDeleteId(null)}
-                                className="flex-1 px-6 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold transition-all"
-                            >
-                                Cancel
-                            </button>
-                            <button
-                                onClick={() => handleDelete(deleteId)}
-                                className="flex-1 px-6 py-3 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold transition-all"
-                            >
-                                Delete
-                            </button>
+
+                            <form onSubmit={handleCreateCourse} className="space-y-8">
+                                <div>
+                                    <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-3 ml-1">Language Designation</label>
+                                    <input
+                                        type="text"
+                                        required
+                                        placeholder="E.G. ADVANCED PYTHON"
+                                        className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-6 py-4 outline-none focus:border-blue-500 font-bold transition-all text-sm"
+                                        value={newCourse.language}
+                                        onChange={(e) => setNewCourse({ ...newCourse, language: e.target.value })}
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-3 ml-1">Editor Engine</label>
+                                    <select
+                                        className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-6 py-4 outline-none focus:border-blue-500 font-bold transition-all text-sm appearance-none cursor-pointer"
+                                        value={newCourse.editor_language}
+                                        onChange={(e) => setNewCourse({ ...newCourse, editor_language: e.target.value })}
+                                    >
+                                        <option value="python">Python 3.x</option>
+                                        <option value="javascript">JavaScript (Node.js)</option>
+                                    </select>
+                                </div>
+
+                                <div className="pt-4 flex gap-4">
+                                    <button
+                                        type="button"
+                                        onClick={() => setIsCreateModalOpen(false)}
+                                        className="flex-1 px-8 py-4 bg-slate-50 hover:bg-slate-100 text-slate-500 rounded-2xl font-black uppercase tracking-[0.2em] text-[10px] border border-slate-100 transition-all active:scale-95"
+                                    >
+                                        Abort
+                                    </button>
+                                    <button
+                                        type="submit"
+                                        disabled={isCreating}
+                                        className="flex-1 px-8 py-4 bg-slate-900 hover:bg-blue-600 text-white rounded-2xl font-black uppercase tracking-[0.2em] text-[10px] border border-slate-900 shadow-xl shadow-slate-900/10 transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center gap-3"
+                                    >
+                                        {isCreating ? 'Synchronizing...' : <><Save size={16} /> Deploy</>}
+                                    </button>
+                                </div>
+                            </form>
                         </div>
                     </div>
                 </div>

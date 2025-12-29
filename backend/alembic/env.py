@@ -13,6 +13,8 @@ sys.path.insert(0, os.getcwd())
 # 2. Import the Base and your application's settings
 from app.db.database import SQLALCHEMY_DATABASE_URL
 from app.models.models import Base
+# Ensure all models are imported so they register with Base.metadata
+import app.models.learning 
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

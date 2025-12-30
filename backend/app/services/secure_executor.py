@@ -21,6 +21,7 @@ import ast
 from typing import Dict, List, Tuple
 from datetime import datetime
 import re
+import shutil
 
 
 class CodeExecutor:
@@ -475,6 +476,228 @@ try {{
     # UTILITIES
     # ========================================================================
     
+    # ========================================================================
+    # COMPILED & OTHER LANGUAGES EXECUTION (Basic Support)
+    # ========================================================================
+
+    def _execute_generic(self, code: str, test_cases: List[Dict], language_settings: Dict) -> Dict:
+        """
+        Generic executor for compiled/other languages.
+        
+        language_settings = {
+            "name": str,
+            "compiler": str, (optional)
+            "runner": str,
+            "extension": str,
+            "compile_args": List[str], (optional, input file appended last)
+            "run_args": List[str] (optional, input file appended last)
+        }
+        """
+        # 1. Check tools
+        if language_settings.get("compiler"):
+            if not shutil.which(language_settings["compiler"]):
+                return {
+                    "verdict": "Error",
+                    "execution_time": 0.0,
+                    "passed_cases": 0,
+                    "total_cases": len(test_cases),
+                    "output_log": f"System Error: {language_settings['name']} compiler '{language_settings['compiler']}' not found on server."
+                }
+        
+        executor_cmd = language_settings["runner"]
+        if not shutil.which(executor_cmd):
+             return {
+                "verdict": "Error",
+                "execution_time": 0.0,
+                "passed_cases": 0,
+                "total_cases": len(test_cases),
+                "output_log": f"System Error: {language_settings['name']} runner '{language_settings['runner']}' not found on server."
+            }
+
+        passed = 0
+        outputs = []
+        total_time = 0.0
+
+        # Create temp file
+        with tempfile.NamedTemporaryFile(mode='w', suffix=f".{language_settings['extension']}", delete=False) as f:
+            f.write(code)
+            source_file = f.name
+
+        compiled_file = None
+        
+        try:
+            # 2. Compile if needed
+            if language_settings.get("compiler"):
+                compiled_file = source_file.replace(f".{language_settings['extension']}", "")
+                if os.name == 'nt':
+                    compiled_file += ".exe"
+                    
+                compile_cmd = [language_settings["compiler"]] + language_settings.get("compile_args", [])
+                
+                # Special handling for some languages
+                if language_settings["name"] == "Java":
+                    # Java is specific, javac Source.java -> Source.class
+                    # For simplicity, we assume single file execution
+                    pass 
+                elif language_settings["name"] == "C++" or language_settings["name"] == "C":
+                    compile_cmd.extend(["-o", compiled_file, source_file])
+                elif language_settings["name"] == "Rust":
+                    compile_cmd.extend(["-o", compiled_file, source_file])
+                elif language_settings["name"] == "Go":
+                    compile_cmd = ["go", "build", "-o", compiled_file, source_file]
+                elif language_settings["name"] == "C#":
+                    # csc /out:Program.exe Program.cs
+                    compile_cmd.extend([f"/out:{compiled_file}", source_file])
+
+                # Run compilation
+                try:
+                    subprocess.run(
+                        compile_cmd,
+                        check=True,
+                        capture_output=True,
+                        text=True,
+                        timeout=10
+                    )
+                except subprocess.CalledProcessError as e:
+                     return {
+                        "verdict": "Compilation Error",
+                        "execution_time": 0.0,
+                        "passed_cases": 0,
+                        "total_cases": len(test_cases),
+                        "output_log": f"Compilation Failed:\n{e.stderr}"
+                    }
+            
+            # 3. Execute against test cases
+            run_cmd_base = [language_settings["runner"]] if not compiled_file else [compiled_file]
+            if language_settings.get("run_args"):
+                 run_cmd_base.extend(language_settings["run_args"])
+            
+            if language_settings["name"] == "Java":
+                # java Source
+                # We need to handle class name properly. For now assuming class is Main or similar? 
+                # Actually, for Java single-file source usage: java Source.java (Java 11+)
+                run_cmd_base = ["java", source_file]
+
+            if language_settings["name"] == "TypeScript":
+                run_cmd_base = ["ts-node", source_file]
+
+            for i, test_case in enumerate(test_cases):
+                start_time = datetime.now()
+                try:
+                    result = subprocess.run(
+                        run_cmd_base,
+                        input=test_case["input_data"] if test_case["input_data"] else None,
+                        capture_output=True,
+                        text=True,
+                        timeout=self.TIMEOUT_SECONDS
+                    )
+                    
+                    exec_time = (datetime.now() - start_time).total_seconds()
+                    total_time += exec_time
+                    
+                    actual_output = result.stdout.strip()
+                    if actual_output == test_case["expected_output"].strip():
+                        passed += 1
+                        outputs.append(f"Test {i+1}: PASS")
+                    else:
+                        outputs.append(f"Test {i+1}: FAIL\nExpected: {test_case['expected_output']}\nGot: {actual_output}")
+                        
+                except subprocess.TimeoutExpired:
+                     outputs.append(f"Test {i+1}: TIMEOUT")
+                except Exception as e:
+                     outputs.append(f"Test {i+1}: ERROR - {str(e)}")
+
+        finally:
+            # Cleanup
+            try:
+                if os.path.exists(source_file): os.unlink(source_file)
+                if compiled_file and os.path.exists(compiled_file): os.unlink(compiled_file)
+            except:
+                pass
+
+        verdict = "Passed" if passed == len(test_cases) else "Failed"
+        return {
+            "verdict": verdict,
+            "passed_cases": passed,
+            "total_cases": len(test_cases),
+            "execution_time": total_time,
+            "output_log": "\n".join(outputs)
+        }
+
+    def execute_java(self, code, test_cases):
+        return self._execute_generic(code, test_cases, {
+            "name": "Java",
+            "compiler": None, # Use java direct execution for Source.java
+            "runner": "java",
+            "extension": "java"
+        })
+
+    def execute_cpp(self, code, test_cases):
+        return self._execute_generic(code, test_cases, {
+            "name": "C++",
+            "compiler": "g++",
+            "runner": "./program", # Placeholder, handled in logic
+            "extension": "cpp"
+        })
+
+    def execute_c(self, code, test_cases):
+        return self._execute_generic(code, test_cases, {
+            "name": "C",
+            "compiler": "gcc",
+            "runner": "./program",
+            "extension": "c"
+        })
+
+    def execute_csharp(self, code, test_cases):
+        return self._execute_generic(code, test_cases, {
+            "name": "C#",
+            "compiler": "csc",
+            "runner": "./program",
+            "extension": "cs"
+        })
+    
+    def execute_go(self, code, test_cases):
+        return self._execute_generic(code, test_cases, {
+            "name": "Go",
+            "compiler": "go",
+            "runner": "./program",
+            "extension": "go"
+        })
+
+    def execute_rust(self, code, test_cases):
+        return self._execute_generic(code, test_cases, {
+            "name": "Rust",
+            "compiler": "rustc",
+            "runner": "./program",
+            "extension": "rs"
+        })
+
+    def execute_typescript(self, code, test_cases):
+        return self._execute_generic(code, test_cases, {
+            "name": "TypeScript",
+            "compiler": None,
+            "runner": "ts-node",
+            "extension": "ts"
+        })
+
+    def execute_php(self, code, test_cases):
+        return self._execute_generic(code, test_cases, {
+            "name": "PHP",
+            "compiler": None,
+            "runner": "php",
+            "extension": "php"
+        })
+
+    def execute_kotlin(self, code, test_cases):
+        # kotlin -script main.kts
+        return self._execute_generic(code, test_cases, {
+            "name": "Kotlin",
+            "compiler": None, # Use script mode
+            "runner": "kotlin",
+            "run_args": ["-script"],
+            "extension": "kts"
+        })
+
     def _indent_code(self, code: str, spaces: int) -> str:
         """Indent code by N spaces."""
         indent = " " * spaces

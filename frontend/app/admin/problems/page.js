@@ -47,6 +47,13 @@ export default function CourseManagement() {
                 headers: { "Authorization": `Bearer ${token}` }
             });
             const data = await res.json();
+            // Sort by Language then Level Order
+            data.sort((a, b) => {
+                if (a.language === b.language) {
+                    return (a.level_order || 0) - (b.level_order || 0);
+                }
+                return a.language.localeCompare(b.language);
+            });
             setCourses(data);
         } catch (err) {
             console.error("Failed to fetch courses:", err);
@@ -165,8 +172,8 @@ export default function CourseManagement() {
                             >
                                 <div className="flex justify-between items-start mb-8">
                                     <div className={`w-12 h-12 rounded-xl flex items-center justify-center font-black text-sm shadow-lg group-hover:scale-110 group-hover:rotate-3 transition-all duration-500 ${course.editor_language === 'python' ? 'bg-indigo-600 text-white' :
-                                            course.editor_language === 'javascript' ? 'bg-amber-400 text-slate-900' :
-                                                'bg-slate-900 text-white'
+                                        course.editor_language === 'javascript' ? 'bg-amber-400 text-slate-900' :
+                                            'bg-slate-900 text-white'
                                         }`}>
                                         {course.editor_language.substring(0, 2).toUpperCase()}
                                     </div>
@@ -176,9 +183,15 @@ export default function CourseManagement() {
                                     </div>
                                 </div>
 
-                                <h3 className="text-2xl font-black text-slate-900 mb-6 group-hover:text-blue-600 transition-colors uppercase tracking-tighter">
+                                <h3 className="text-2xl font-black text-slate-900 mb-2 group-hover:text-blue-600 transition-colors uppercase tracking-tighter">
                                     {course.language}
                                 </h3>
+                                <div className={`text-[10px] font-black uppercase tracking-widest mb-6 ${course.level === 'Beginner' ? 'text-emerald-500' :
+                                    course.level === 'Intermediate' ? 'text-amber-500' :
+                                        'text-rose-500'
+                                    }`}>
+                                    {course.level || 'Standard'} Tier
+                                </div>
 
                                 <div className="grid grid-cols-2 gap-4 mb-8">
                                     <div className="bg-slate-50 rounded-2xl p-4 border border-slate-100">

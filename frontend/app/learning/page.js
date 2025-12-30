@@ -52,6 +52,32 @@ export default function CourseListPage() {
         </div>
     );
 
+    const getActiveCourses = () => {
+        // Group by language
+        const grouped = {};
+        courses.forEach(c => {
+            if (!grouped[c.language]) grouped[c.language] = [];
+            grouped[c.language].push(c);
+        });
+
+        // For each language, find the "Active" level
+        // Active = First incomplete level OR Last level if all complete
+        return Object.values(grouped).map(group => {
+            // Sort by level order
+            group.sort((a, b) => (a.level_order || 0) - (b.level_order || 0));
+
+            // Find first incomplete
+            let active = group.find(c => !c.progress.is_completed);
+
+            // If all complete, show the last one (Advanced)
+            if (!active) active = group[group.length - 1];
+
+            return active;
+        });
+    };
+
+    const activeCoursesDisplay = getActiveCourses();
+
     return (
         <div className="min-h-screen bg-slate-50/50">
             {/* Cinematic Hero Section */}
@@ -98,7 +124,7 @@ export default function CourseListPage() {
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
-                    {courses.map((course, idx) => (
+                    {activeCoursesDisplay.map((course, idx) => (
                         <Link
                             key={course.id}
                             href={`/learning/${course.id}`}
@@ -109,12 +135,17 @@ export default function CourseListPage() {
                             <div className="flex justify-between items-start mb-12">
                                 <div className={`w-14 h-14 rounded-2xl flex items-center justify-center font-black text-lg transition-all duration-500 group-hover:scale-110 group-hover:rotate-3 shadow-lg ${course.editor_language === 'python' ? 'bg-indigo-600 text-white shadow-indigo-200' :
                                         course.editor_language === 'javascript' ? 'bg-amber-400 text-slate-900 shadow-amber-100' :
-                                            'bg-slate-900 text-white'
+                                            course.editor_language === 'java' ? 'bg-orange-600 text-white shadow-orange-200' :
+                                                course.editor_language === 'cpp' ? 'bg-blue-600 text-white shadow-blue-200' :
+                                                    'bg-slate-900 text-white'
                                     }`}>
                                     {course.editor_language.substring(0, 2).toUpperCase()}
                                 </div>
-                                <div className="text-[10px] font-black uppercase tracking-widest text-slate-300 group-hover:text-blue-500 transition-colors">
-                                    Encrypted Module
+                                <div className={`text-[10px] font-black uppercase tracking-widest transition-colors ${course.level === 'Beginner' ? 'text-emerald-500' :
+                                        course.level === 'Intermediate' ? 'text-amber-500' :
+                                            'text-rose-500'
+                                    }`}>
+                                    {course.level || 'Standard'} Tier
                                 </div>
                             </div>
 
@@ -144,7 +175,7 @@ export default function CourseListPage() {
                                     </div>
                                     <div className="flex items-center gap-2 px-4 py-2 bg-slate-50 rounded-xl group-hover:bg-blue-600 group-hover:text-white transition-all duration-500">
                                         <span className="text-[9px] font-black uppercase tracking-widest">
-                                            {course.progress.current_step > course.progress.total_steps ? "Review" : "Deploy"}
+                                            {course.progress.percentage_complete >= 99 ? "Complete" : "Deploy"}
                                         </span>
                                         <ChevronRight size={12} />
                                     </div>
@@ -154,7 +185,7 @@ export default function CourseListPage() {
                     ))}
                 </div>
 
-                {courses.length === 0 && (
+                {activeCoursesDisplay.length === 0 && (
                     <div className="text-center py-32 bg-white rounded-[48px] border-2 border-dashed border-slate-200 shadow-premium">
                         <div className="w-20 h-20 bg-slate-50 rounded-3xl flex items-center justify-center mx-auto mb-8">
                             <BookOpen size={32} className="text-slate-300" />

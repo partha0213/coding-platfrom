@@ -13,6 +13,7 @@ export default function CreateProblem() {
     const [initLoading, setInitLoading] = useState(false);
     const [courseId, setCourseId] = useState(null);
     const [editId, setEditId] = useState(null);
+    const [courseInfo, setCourseInfo] = useState(null);
 
     const [formData, setFormData] = useState({
         title: "",
@@ -37,7 +38,10 @@ export default function CreateProblem() {
         const cId = urlParams.get('courseId');
         const step = urlParams.get('step');
 
-        if (cId) setCourseId(cId);
+        if (cId) {
+            setCourseId(cId);
+            fetchCourse(cId);
+        }
         if (step) setFormData(prev => ({ ...prev, step_number: parseInt(step) }));
 
         if (edit) {
@@ -82,6 +86,21 @@ export default function CreateProblem() {
             console.error("Failed to fetch problem for editing:", err);
         } finally {
             setInitLoading(false);
+        }
+    };
+
+    const fetchCourse = async (id) => {
+        try {
+            const token = localStorage.getItem("token");
+            const res = await fetch(`${API_URL}/admin/learning/courses/${id}`, {
+                headers: { "Authorization": `Bearer ${token}` }
+            });
+            if (res.ok) {
+                const data = await res.json();
+                setCourseInfo(data);
+            }
+        } catch (err) {
+            console.error("Failed to fetch course info", err);
         }
     };
 
@@ -449,6 +468,14 @@ export default function CreateProblem() {
                                     <Info size={10} /> Associated Course ID
                                 </div>
                                 <div className="text-2xl font-black text-slate-900 tabular-nums"># {courseId || "UNLINKED"}</div>
+                                {courseInfo && (
+                                    <div className={`mt-2 text-[10px] font-black uppercase tracking-widest px-2 py-1 rounded border inline-block ${courseInfo.level === 'Beginner' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' :
+                                        courseInfo.level === 'Intermediate' ? 'bg-amber-50 text-amber-600 border-amber-100' :
+                                            'bg-rose-50 text-rose-600 border-rose-100'
+                                        }`}>
+                                        {courseInfo.level} Tier
+                                    </div>
+                                )}
                             </div>
 
                             <div className="p-8 bg-blue-600/5 rounded-3xl border border-blue-100 flex flex-col gap-4">

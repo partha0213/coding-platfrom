@@ -85,6 +85,8 @@ def list_courses_admin(
         result.append({
             "id": course.id,
             "language": course.language,
+            "level": course.level,
+            "level_order": course.level_order,
             "editor_language": course.editor_language,
             "is_active": course.is_active,
             "problem_count": problem_count,
@@ -568,6 +570,107 @@ def reorder_steps(
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Reordering failed: {str(e)}")
+
+
+# ============================================================================
+# BULK UPLOAD MANAGEMENT
+# ============================================================================
+
+@router.post("/courses/{course_id}/bulk-problems")
+def bulk_upload_problems(
+    course_id: int,
+    bulk_data: dict,
+    db: Session = Depends(database.get_db),
+    admin: User = Depends(get_current_admin)
+):
+    """
+    Bulk upload problems from JSON.
+    
+    Expected JSON structure:
+    {
+      "language": "Python",
+      "level": "Beginner",
+      "steps": [
+        {
+          "sequence": 1,
+          "title": "Welcome",
+          "mission_briefing": "...",
+          "starter_code": "...",
+          "expected_solution": "...",
+          "slv": { ... },
+          "validation": { "input": "", "expected_output": "" }
+        },
+        ...
+      ]
+    }
+    """
+    course = db.query(Course).filter(Course.id == course_id).first()
+    if not course:
+        raise HTTPException(status_code=404, detail="Course not found")
+
+    steps = bulk_data.get("steps", [])
+    if not steps:
+        raise HTTPException(status_code=400, detail="No steps provided")
+
+    # Optional: Verify language/level match if provided
+    if "level" in bulk_data and bulk_data["level"] != course.level:
+        pass # Warning only? Or ignore? ignoring for now as ID is authority.
+
+    created_count = 0
+    
+    try:
+        for step in steps:
+            step_number = step.get("sequence")
+            if not step_number:
+                continue
+
+            # Check if step exists
+            existing = db.query(CourseProblem).filter(
+                CourseProblem.course_id == course_id,
+                CourseProblem.step_number == step_number
+            ).first()
+
+            if existing:
+                continue # Skip if exists (or could update?) - Plan said "APPEND or reject". Skipping for safety.
+
+            # Map fields
+            problem = CourseProblem(
+                course_id=course_id,
+                step_number=step_number,
+                title=step.get("title", f"Step {step_number}"),
+                description=step.get("mission_briefing", ""),
+                starter_code=step.get("starter_code", ""),
+                solution_code=step.get("expected_solution", ""),
+                validation_policy=step.get("slv", {})
+            )
+            db.add(problem)
+            db.flush() # Get ID
+
+            # Add test case if validation present
+            val = step.get("validation")
+            if val:
+                test_case = CourseProblemTestCase(
+                    problem_id=problem.id,
+                    input_data=val.get("input", ""),
+                    expected_output=val.get("expected_output", ""),
+                    is_hidden=False
+                )
+                db.add(test_case)
+            
+            created_count += 1
+        
+        db.commit()
+        
+        log_admin_action(
+            db, admin.id, "BULK_UPLOAD", "course", course_id,
+            new_value={"count": created_count}
+        )
+
+        return {"message": f"Successfully uploaded {created_count} problems", "count": created_count}
+
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Bulk upload failed: {str(e)}")
 
 
 # ============================================================================

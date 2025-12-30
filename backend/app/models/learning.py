@@ -9,10 +9,16 @@ class Course(Base):
     __tablename__ = "courses"
     
     id = Column(Integer, primary_key=True, index=True)
-    language = Column(String, unique=True, nullable=False, index=True)
+    language = Column(String, nullable=False, index=True) # Not unique anymore
+    level = Column(String, nullable=False) # "Beginner", "Intermediate", "Advanced"
+    level_order = Column(Integer, nullable=False) # 1, 2, 3
     editor_language = Column(String, nullable=False)
     is_active = Column(Boolean, default=True, nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+    
+    __table_args__ = (
+        UniqueConstraint('language', 'level', name='unique_lang_level'),
+    )
     
     # Relationships
     problems = relationship("CourseProblem", back_populates="course", cascade="all, delete-orphan")

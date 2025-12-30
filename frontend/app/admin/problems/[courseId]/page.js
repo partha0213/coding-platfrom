@@ -19,7 +19,9 @@ import {
     FileText,
     Code as CodeIcon,
     Beaker,
-    Activity
+    Activity,
+    FileJson,
+    Upload
 } from 'lucide-react';
 import AdvancedLoading from '@/components/AdvancedLoading';
 
@@ -30,6 +32,9 @@ export default function CourseStepManagement() {
     const [course, setCourse] = useState(null);
     const [loading, setLoading] = useState(true);
     const [isReordering, setIsReordering] = useState(false);
+    const [isBulkModalOpen, setIsBulkModalOpen] = useState(false);
+    const [bulkData, setBulkData] = useState("");
+    const [isUploading, setIsUploading] = useState(false);
 
     useEffect(() => {
         fetchCourseDetails();
@@ -87,6 +92,47 @@ export default function CourseStepManagement() {
         }
     };
 
+    const handleBulkUpload = async (e) => {
+        e.preventDefault();
+        setIsUploading(true);
+        const token = localStorage.getItem("token");
+        try {
+            let parsedData;
+            try {
+                parsedData = JSON.parse(bulkData);
+            } catch (err) {
+                alert("Invalid JSON format");
+                setIsUploading(false);
+                return;
+            }
+
+            const res = await fetch(`${API_URL}/admin/learning/courses/${courseId}/bulk-problems`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${token}`
+                },
+                body: JSON.stringify(parsedData)
+            });
+
+            if (res.ok) {
+                const result = await res.json();
+                alert(`Success: ${result.message}`);
+                setIsBulkModalOpen(false);
+                setBulkData("");
+                fetchCourseDetails();
+            } else {
+                const err = await res.json();
+                alert(err.detail || "Bulk upload failed");
+            }
+        } catch (err) {
+            console.error(err);
+            alert("Network error during bulk upload");
+        } finally {
+            setIsUploading(false);
+        }
+    };
+
     const handleDeleteStep = async (problemId) => {
         if (!confirm("Permanently decommission this step? This may break user progression records.")) return;
 
@@ -122,6 +168,8 @@ export default function CourseStepManagement() {
         );
     }
 
+    if (!course) return null;
+
     return (
         <div className="min-h-screen bg-slate-50 p-10">
             <header className="max-w-6xl mx-auto mb-12 glass-morphism p-10 rounded-[40px] border border-white/60 shadow-premium group relative overflow-hidden flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
@@ -136,11 +184,29 @@ export default function CourseStepManagement() {
                             <span className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-600 bg-blue-50 px-3 py-1 rounded-full border border-blue-100 italic">Mastery Path</span>
                             <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">ID: {course.id}</span>
                         </div>
-                        <h1 className="text-4xl font-black text-slate-900 tracking-tighter uppercase">{course.language} <span className="italic bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-indigo-600 shrink-0">Blueprint</span></h1>
+                        <div>
+                            <h1 className="text-3xl font-black text-slate-900 tracking-tighter mb-1">{course.language}</h1>
+                            <div className="flex items-center gap-3">
+                                <span className={`text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded border ${course.level === 'Beginner' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' :
+                                    course.level === 'Intermediate' ? 'bg-amber-50 text-amber-600 border-amber-100' :
+                                        'bg-rose-50 text-rose-600 border-rose-100'
+                                    }`}>
+                                    {course.level} Tier
+                                </span>
+                                <p className="text-slate-500 font-bold uppercase tracking-widest text-[10px] opacity-70">Sequence Manager</p>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
                 <div className="flex items-center gap-4 relative z-10 w-full md:w-auto">
+                    <button
+                        onClick={() => setIsBulkModalOpen(true)}
+                        className="w-full md:w-auto bg-white text-slate-900 px-6 py-4 rounded-2xl font-black uppercase tracking-[0.2em] text-[10px] flex items-center justify-center gap-3 transition-all shadow-xl hover:bg-slate-50 border border-slate-200 active:scale-95 group/bulk"
+                    >
+                        <FileJson size={18} className="group-hover/bulk:scale-110 transition-transform text-blue-600" />
+                        Bulk Import
+                    </button>
                     <Link href={`/admin/create-problem?courseId=${courseId}&step=${course.problems.length + 1}`}>
                         <button className="w-full md:w-auto bg-slate-900 text-white px-8 py-4 rounded-2xl font-black uppercase tracking-[0.2em] text-[10px] flex items-center justify-center gap-3 transition-all shadow-2xl hover:bg-blue-600 active:scale-95 group/btn">
                             <Plus size={18} className="group-hover/btn:rotate-90 transition-transform" /> Add Step {course.problems.length + 1}
@@ -246,6 +312,54 @@ export default function CourseStepManagement() {
                     Synchronized with Central Intelligence Hub V2
                 </div>
             </footer>
+
+            {/* Bulk Import Modal */}
+            {isBulkModalOpen && (
+                <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[100] flex items-center justify-center p-6 animate-in fade-in duration-300">
+                    <div className="bg-white w-full max-w-2xl rounded-[40px] shadow-premium border border-white/20 overflow-hidden scale-in-center flex flex-col max-h-[90vh]">
+                        <div className="p-8 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+                            <div>
+                                <h3 className="text-2xl font-black text-slate-900 tracking-tighter uppercase italic flex items-center gap-3">
+                                    <FileJson className="text-blue-600" /> Import Protocol
+                                </h3>
+                                <p className="text-slate-400 text-[10px] uppercase tracking-widest font-bold mt-1">Bulk Node Configuration</p>
+                            </div>
+                            <button onClick={() => setIsBulkModalOpen(false)} className="w-10 h-10 rounded-full hover:bg-slate-100 flex items-center justify-center text-slate-400 transition-colors">
+                                <Plus size={24} className="rotate-45" />
+                            </button>
+                        </div>
+
+                        <div className="p-8 overflow-y-auto flex-1">
+                            <div className="mb-4 bg-amber-50 text-amber-600 p-4 rounded-2xl text-[10px] font-bold uppercase tracking-widest border border-amber-100 flex items-start gap-3">
+                                <Activity size={14} className="mt-0.5 shrink-0" />
+                                Warning: Ensure Sequence IDs do not conflict with existing nodes. Data will be appended.
+                            </div>
+                            <textarea
+                                value={bulkData}
+                                onChange={(e) => setBulkData(e.target.value)}
+                                placeholder='Paste JSON data here...'
+                                className="w-full h-96 bg-slate-50 border border-slate-200 rounded-2xl p-6 font-mono text-xs outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all resize-none"
+                            />
+                        </div>
+
+                        <div className="p-6 border-t border-slate-100 bg-slate-50/50 flex gap-4">
+                            <button
+                                onClick={() => setIsBulkModalOpen(false)}
+                                className="flex-1 px-8 py-4 bg-white hover:bg-slate-50 text-slate-500 rounded-2xl font-black uppercase tracking-[0.2em] text-[10px] border border-slate-200 transition-all active:scale-95"
+                            >
+                                Abort
+                            </button>
+                            <button
+                                onClick={handleBulkUpload}
+                                disabled={isUploading || !bulkData}
+                                className="flex-1 px-8 py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-black uppercase tracking-[0.2em] text-[10px] shadow-xl shadow-blue-600/20 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3"
+                            >
+                                {isUploading ? 'Processing...' : <><Upload size={16} /> Execute Import</>}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

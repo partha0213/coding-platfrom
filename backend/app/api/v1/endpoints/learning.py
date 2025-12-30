@@ -128,6 +128,8 @@ def list_courses(
         result.append({
             "id": course.id,
             "language": course.language,
+            "level": course.level,
+            "level_order": course.level_order,
             "editor_language": course.editor_language,
             "progress": {
                 "current_step": progress.current_step if progress else 1,
@@ -207,6 +209,7 @@ def get_course_problems(
         "course": {
             "id": course.id,
             "language": course.language,
+            "level": course.level,
             "editor_language": course.editor_language
         },
         "progress": {
@@ -396,6 +399,24 @@ def submit_solution(
         result = executor.execute_python(code, test_cases)
     elif course.editor_language == "javascript":
         result = executor.execute_javascript(code, test_cases)
+    elif course.editor_language == "java":
+        result = executor.execute_java(code, test_cases)
+    elif course.editor_language == "cpp":
+        result = executor.execute_cpp(code, test_cases)
+    elif course.editor_language == "c":
+        result = executor.execute_c(code, test_cases)
+    elif course.editor_language == "csharp":
+        result = executor.execute_csharp(code, test_cases)
+    elif course.editor_language == "go":
+        result = executor.execute_go(code, test_cases)
+    elif course.editor_language == "rust":
+        result = executor.execute_rust(code, test_cases)
+    elif course.editor_language == "typescript":
+        result = executor.execute_typescript(code, test_cases)
+    elif course.editor_language == "php":
+        result = executor.execute_php(code, test_cases)
+    elif course.editor_language == "kotlin":
+        result = executor.execute_kotlin(code, test_cases)
     else:
         raise HTTPException(
             status_code=500,
@@ -498,7 +519,9 @@ def get_progress(
     
     return {
         "course_id": course_id,
+        "course_id": course_id,
         "language": course.language,
+        "level": course.level,
         "current_step": progress.current_step,
         "completed_steps": completed_steps,
         "total_steps": total_problems,

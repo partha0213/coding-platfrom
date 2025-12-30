@@ -316,7 +316,8 @@ def add_problem(
         title=problem_data["title"],
         description=problem_data["description"],
         starter_code=problem_data.get("starter_code"),
-        solution_code=problem_data.get("solution_code")
+        solution_code=problem_data.get("solution_code"),
+        validation_policy=problem_data.get("validation_policy")
     )
     
     db.add(problem)
@@ -326,7 +327,7 @@ def add_problem(
     # Audit log
     log_admin_action(
         db, admin.id, "ADD_PROBLEM", "problem", problem.id,
-        new_value={"course_id": course_id, "step_number": step_number, "title": problem.title}
+        new_value={"course_id": course_id, "step_number": step_number, "title": problem.title, "validation_policy": problem.validation_policy}
     )
     
     return {
@@ -367,7 +368,8 @@ def update_problem(
         "title": problem.title,
         "description": problem.description,
         "starter_code": problem.starter_code,
-        "solution_code": problem.solution_code
+        "solution_code": problem.solution_code,
+        "validation_policy": problem.validation_policy
     }
     
     # Update allowed fields
@@ -379,6 +381,8 @@ def update_problem(
         problem.starter_code = problem_data["starter_code"]
     if "solution_code" in problem_data:
         problem.solution_code = problem_data["solution_code"]
+    if "validation_policy" in problem_data:
+        problem.validation_policy = problem_data["validation_policy"]
     
     # Prevent changing structural fields
     if "course_id" in problem_data or "step_number" in problem_data:
@@ -426,6 +430,7 @@ def get_problem_admin(
         "description": problem.description,
         "starter_code": problem.starter_code,
         "solution_code": problem.solution_code,
+        "validation_policy": problem.validation_policy,
         "created_at": problem.created_at.isoformat()
     }
 

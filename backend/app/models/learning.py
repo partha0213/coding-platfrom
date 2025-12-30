@@ -29,6 +29,7 @@ class CourseProblem(Base):
     description = Column(Text, nullable=False)
     starter_code = Column(Text, nullable=True)
     solution_code = Column(Text, nullable=True)  # Hidden from learners
+    validation_policy = Column(JSON, nullable=True)  # Logic requirements (AST checks)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     
     __table_args__ = (

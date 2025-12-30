@@ -17,6 +17,7 @@ import subprocess
 import tempfile
 import os
 import json
+import ast
 from typing import Dict, List, Tuple
 from datetime import datetime
 import re
@@ -45,6 +46,46 @@ class CodeExecutor:
     def __init__(self):
         self.temp_dir = tempfile.gettempdir()
     
+    def verify_logic(self, code: str, language: str, policy: dict) -> Tuple[bool, str]:
+        """
+        Verify code against logic requirements using static analysis.
+        This prevents hardcoding values when variables/logic were requested.
+        """
+        if not policy:
+            return True, ""
+            
+        if language == "python":
+            return self._verify_python_logic(code, policy)
+        
+        return True, ""
+
+    def _verify_python_logic(self, code: str, policy: dict) -> Tuple[bool, str]:
+        """Perform AST analysis on Python code."""
+        try:
+            tree = ast.parse(code)
+        except Exception as e:
+            return False, f"Syntax error during logic analysis: {str(e)}"
+
+        # 1. Required Variables
+        required_vars = policy.get("required_variables", [])
+        if required_vars:
+            found_vars = set()
+            for node in ast.walk(tree):
+                if isinstance(node, ast.Name) and isinstance(node.ctx, ast.Store):
+                    found_vars.add(node.id)
+            
+            for var in required_vars:
+                if var not in found_vars:
+                    return False, f"Protocol Violation: Missing mandatory variable assignment for '{var}'."
+
+        # 2. Forbidden Patterns
+        forbidden_patterns = policy.get("forbidden_patterns", [])
+        for pattern in forbidden_patterns:
+            if pattern in code:
+                return False, f"Protocol Violation: Forbidden pattern detected: '{pattern}'."
+
+        return True, ""
+
     def execute_python(self, code: str, test_cases: List[Dict]) -> Dict:
         """
         Execute Python code against test cases.

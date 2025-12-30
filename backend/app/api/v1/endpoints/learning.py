@@ -349,6 +349,28 @@ def submit_solution(
     executor = CodeExecutor()
     course = problem.course
     
+    # 2. Logic Verification (Anti-Cheating SLV)
+    is_logic_valid, logic_error = executor.verify_logic(
+        code, 
+        course.editor_language, 
+        problem.validation_policy
+    )
+    if not is_logic_valid:
+        return {
+            "success": False,
+            "message": logic_error,
+            "verdict": "Protocol Violation",
+            "progress": {
+                "current_step": progress.current_step
+            },
+            "execution": {
+                "passed_cases": 0,
+                "total_cases": len(problem.test_cases) or 1,
+                "execution_time": 0.0,
+                "output": f"Logic Analysis Failure: {logic_error}"
+            }
+        }
+
     # Get real test cases from DB
     db_test_cases = problem.test_cases
     if db_test_cases:

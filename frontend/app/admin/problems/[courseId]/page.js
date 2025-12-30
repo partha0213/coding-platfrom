@@ -18,7 +18,8 @@ import {
     Type,
     FileText,
     Code as CodeIcon,
-    Beaker
+    Beaker,
+    Activity
 } from 'lucide-react';
 import AdvancedLoading from '@/components/AdvancedLoading';
 
@@ -239,10 +240,10 @@ export default function CourseStepManagement() {
 
             <footer className="max-w-6xl mx-auto mt-12 p-8 border-t border-slate-200 flex justify-between items-center text-slate-400">
                 <div className="text-[10px] font-black uppercase tracking-[0.2em] flex items-center gap-3">
-                    <Activity size={14} className="text-emerald-500" /> Node Status: Operational
+                    <Activity size={14} className="text-emerald-500" /> Node Status: Active Protocol
                 </div>
                 <div className="text-[10px] font-black uppercase tracking-[0.2em]">
-                    Synchronized with Central Intelligence Registry
+                    Synchronized with Central Intelligence Hub V2
                 </div>
             </footer>
         </div>

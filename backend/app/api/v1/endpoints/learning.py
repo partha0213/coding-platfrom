@@ -211,6 +211,7 @@ def get_course_problems(
         },
         "progress": {
             "current_step": progress.current_step,
+            "completed_steps": max(0, progress.current_step - 1),
             "total_steps": len(problems)
         },
         "problems": result

@@ -77,7 +77,9 @@ export default function CourseRoadmapPage() {
                     </div>
                     <div className="text-right">
                         <div className="text-5xl font-black text-indigo-500">
-                            {Math.round((progress.completed_steps / progress.total_steps) * 100)}%
+                            {progress?.total_steps > 0
+                                ? Math.round(((progress.completed_steps || 0) / progress.total_steps) * 100)
+                                : 0}%
                         </div>
                         <div className="text-xs font-bold text-slate-500 uppercase tracking-tighter mt-1">
                             Completed

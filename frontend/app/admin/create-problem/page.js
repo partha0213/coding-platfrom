@@ -303,17 +303,19 @@ export default function CreateProblem() {
                                     </div>
 
                                     {/* Shadow Logic Verification */}
-                                    <div className="glass-morphism p-10 rounded-[40px] border border-white/60 shadow-premium group relative overflow-hidden">
+                                    <div className="glass-morphism p-10 rounded-[40px] border border-white/60 shadow-premium group relative overflow-hidden lg:col-span-2">
                                         <div className="flex items-center gap-4 mb-8">
                                             <div className="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center text-amber-600">
-                                                <Cpu size={20} />
+                                                <Shield size={20} />
                                             </div>
-                                            <h3 className="text-lg font-black text-slate-900 tracking-tight italic uppercase">Shadow Logic Verification (SLV)</h3>
-                                        </div>
-
-                                        <div className="space-y-8">
                                             <div>
-                                                <label className="block text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 mb-4 ml-1">Mandatory Variables (Comma separated)</label>
+                                                <h3 className="text-lg font-black text-slate-900 tracking-tight italic uppercase">Shadow Logic Verification (SLV)</h3>
+                                                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">Advanced Protocol Reinforcement</p>
+                                            </div>
+                                        </div>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+                                            <div>
+                                                <label className="block text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 mb-4 ml-1">Mandatory Symbols (Comma separated)</label>
                                                 <input
                                                     type="text"
                                                     value={formData.validation_policy?.required_variables?.join(", ") || ""}
@@ -327,10 +329,30 @@ export default function CreateProblem() {
                                                             }
                                                         });
                                                     }}
-                                                    className="w-full bg-white/40 border border-white/60 rounded-2xl px-8 py-4 focus:border-amber-500 outline-none transition text-slate-900 font-bold text-sm shadow-inner"
+                                                    className="w-full bg-white/40 border border-white/60 rounded-2xl px-6 py-4 focus:border-amber-500 outline-none transition text-slate-900 font-bold text-sm shadow-inner"
                                                     placeholder="e.g. a, b, result"
                                                 />
-                                                <p className="text-[9px] text-slate-400 mt-3 ml-1 font-medium uppercase tracking-widest italic opacity-70">Ensures students are implementing specific variables rather than hardcoding. (Python only)</p>
+                                                <p className="text-[9px] text-slate-400 mt-3 ml-1 font-medium uppercase tracking-widest italic opacity-70">Ensures students are implementing specific logic markers.</p>
+                                            </div>
+                                            <div>
+                                                <label className="block text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 mb-4 ml-1">Forbidden Patterns (Comma separated)</label>
+                                                <input
+                                                    type="text"
+                                                    value={formData.validation_policy?.forbidden_patterns?.join(", ") || ""}
+                                                    onChange={(e) => {
+                                                        const patterns = e.target.value.split(",").map(v => v.trim()).filter(v => v);
+                                                        setFormData({
+                                                            ...formData,
+                                                            validation_policy: {
+                                                                ...formData.validation_policy,
+                                                                forbidden_patterns: patterns
+                                                            }
+                                                        });
+                                                    }}
+                                                    className="w-full bg-white/40 border border-white/60 rounded-2xl px-6 py-4 focus:border-red-500 outline-none transition text-slate-900 font-bold text-sm shadow-inner"
+                                                    placeholder="e.g. print('hello'), import os"
+                                                />
+                                                <p className="text-[9px] text-slate-400 mt-3 ml-1 font-medium uppercase tracking-widest italic opacity-70">Strictly prohibits specific substrings or exploits.</p>
                                             </div>
                                         </div>
                                     </div>
